@@ -1,10 +1,10 @@
-import os, sys, subprocess, platform, tomllib, shutil
-import urllib.request
+import os, sys, subprocess, platform, shutil, tomllib
 
 # ===== CONFIG =====
 PYTHON_VERSION = "3.12"
-REPO_URL = "https://github.com/Zarxrax/Sammie-Roto-2.git"
-RAW_PYPROJECT_URL = "https://raw.githubusercontent.com/Zarxrax/Sammie-Roto-2/main/pyproject.toml"
+# NOTE: This is a local-only fork. The auto-updater (remote version check +
+# `git reset --hard origin/main`) has been removed so local file changes are
+# never overwritten. Update manually with git if/when you want upstream changes.
 
 # ===== UTILS =====
 def run_command(cmd):
@@ -23,15 +23,6 @@ def get_local_version():
     with open("pyproject.toml", "rb") as f:
         data = tomllib.load(f)
         return data["project"]["version"]
-
-def get_remote_version():
-    try:
-        with urllib.request.urlopen(RAW_PYPROJECT_URL) as response:
-            data = tomllib.loads(response.read().decode())
-            return data["project"]["version"]
-    except Exception as e:
-        print(f"[Warning: Could not check remote version: {e}]")
-        return None
 
 def get_installed_backend():
     """Detects which torch extra is currently installed (used for updates)."""
@@ -55,28 +46,6 @@ def get_installed_backend():
         pass
     
     return None
-
-# ===== GIT LOGIC =====
-def pull_latest_code(hard_reset=False):
-    """Ensures the local files match the repository."""
-    from dulwich import porcelain
-    from dulwich.repo import Repo
-
-    if not os.path.exists(".git"):
-        print("[Initializing Git tracking...]")
-        repo = Repo.init(".")
-        porcelain.remote_add(repo, "origin", REPO_URL)
-    else:
-        repo = Repo(".")
-
-    print("[Fetching latest code from GitHub...]")
-    porcelain.fetch(repo, "origin")
-    
-    if hard_reset:
-        print("[Restoring all program files to original state...]")
-        porcelain.reset(repo, "hard", "origin/main")
-    else:
-        porcelain.reset(repo, "soft", "origin/main")
 
 # ===== BACKEND SELECTION =====
 def choose_backend():
@@ -114,46 +83,17 @@ def sync_env(backend, reinstall=False):
     run_command(cmd)
 
 # ===== CORE ACTIONS =====
-def handle_update():
-    local_v = get_local_version()
-    remote_v = get_remote_version()
-
-    if remote_v and remote_v > local_v:
-        print(f"[Update found: {remote_v} (Local: {local_v})]")
-        pull_latest_code(hard_reset=True)
-        backend = get_installed_backend()
-        if not backend:
-            backend = choose_backend()
-        sync_env(backend)
-        #if platform.system() == "Windows":
-        #    create_windows_shortcut()
-        #if platform.system() == "Darwin":
-        #    create_mac_app()
-        #if platform.system() == "Linux":
-        #    create_linux_desktop_entry()
-        print("\nUpdate complete!")
-    else:
-        print(f"[Already up to date (Version {local_v}).]")
-
 def setup(reinstall=False):
-    # Fetch/Restore files if it's a reinstall
-    if reinstall:
-        pull_latest_code(hard_reset=True)
-
     # Python Check
     run_command(["uv", "python", "install", "--no-bin", PYTHON_VERSION])
-    
+
     # Backend Selection
-    # If fresh install or reinstall, always ask. 
+    # If fresh install or reinstall, always ask.
     sys.stdout.flush()
     backend = choose_backend()
-    
+
     # Environment Sync
     sync_env(backend, reinstall=reinstall)
-    
-    # Git tracking (initial setup only)
-    if not os.path.exists(".git"):
-        pull_latest_code(hard_reset=False)
 
     # Create desktop shortcut on Windows
     if platform.system() == "Windows":
@@ -304,15 +244,12 @@ def main():
         setup()
     else:
         print("\nPlease ensure that Sammie-Roto-2 is not running before continuing.")
-        print("\nSammie-Roto-2 Manager")
-        print("1) Check for Updates")
-        print("2) Reinstall/Repair")
-        print("3) Exit")
-        
+        print("\nSammie-Roto-2 Manager (local-only build)")
+        print("1) Reinstall/Repair dependencies")
+        print("2) Exit")
+
         choice = input("> ").strip()
         if choice == "1":
-            handle_update()
-        elif choice == "2":
             setup(reinstall=True)
         else:
             sys.exit(0)

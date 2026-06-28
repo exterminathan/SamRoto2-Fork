@@ -482,7 +482,7 @@ class FormatRegistry:
     @classmethod
     def get_format(cls, format_id: str) -> ExportFormat:
         """Get format by ID"""
-        return cls._formats.get(format_id)
+        return cls._formats.get(format_id) # type: ignore
     
     @classmethod
     def get_all_formats(cls) -> List[ExportFormat]:

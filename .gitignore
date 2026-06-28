@@ -1,6 +1,7 @@
 # Sammie-Roto specific files and folders
 python-3.12.8-embed-amd64/
 temp/
+temp_test_roto/
 sammie_debug.log
 sammie_settings.json
 sammie_settings.conf
@@ -13,6 +14,11 @@ checkpoints/minimax/transformer/diffusion_pytorch_model.safetensors
 checkpoints/minimax/vae/diffusion_pytorch_model.safetensors
 checkpoints/videomama/unet/diffusion_pytorch_model.safetensors
 checkpoints/videomama/vae/diffusion_pytorch_model.fp16.safetensors
+
+#local video files
+/files/
+
+
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

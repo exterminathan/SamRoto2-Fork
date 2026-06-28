@@ -14,9 +14,6 @@ This module contains reusable UI components including:
 
 import os
 import shutil
-import threading
-import requests
-from packaging import version
 from datetime import datetime
 from PySide6.QtWidgets import (
     QLabel, QTableWidget, QTableWidgetItem, QAbstractItemView, 
@@ -145,34 +142,6 @@ class ColorPickerWidget(ColorDisplayWidget):
             new_color = (color.red(), color.green(), color.blue())
             self.set_color(new_color)
             self.color_changed.emit(new_color)
-
-# ==================== UPDATE CHECKER ====================
-
-class UpdateChecker(QObject):
-    """Checks for application updates on GitHub in background thread"""
-    update_available = Signal(str, str)  # current_version, latest_version
-    
-    def __init__(self):
-        super().__init__()
-    
-    def check_for_updates(self, repo="Zarxrax/Sammie-Roto", timeout=5):
-        """Check for updates in a background thread"""
-        def background_check():
-            try:
-                url = f"https://api.github.com/repos/{repo}/releases/latest"
-                response = requests.get(url, timeout=timeout)
-                if response.status_code == 200:
-                    latest = response.json().get("tag_name", "").lstrip("v")
-                    from sammie_main import __version__
-                    if version.parse(latest) > version.parse(__version__):
-                        # Emit signal to main thread
-                        self.update_available.emit(__version__, latest)
-            except Exception as e:
-                # Optionally log the error
-                print(f"Update check failed silently: {e}")
-        
-        threading.Thread(target=background_check, daemon=True).start()
-
 
 # ==================== CLICKABLE LABEL ====================
 

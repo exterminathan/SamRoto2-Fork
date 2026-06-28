@@ -29,7 +29,7 @@ from sammie.settings_manager import get_settings_manager, initialize_settings, A
 
 # Import GUI widgets
 from sammie.gui_widgets import (
-    ConsoleRedirect, ColorDisplayWidget, UpdateChecker, ClickableLabel,
+    ConsoleRedirect, ColorDisplayWidget, ClickableLabel,
     HotkeysHelpDialog, PointTable, ImageViewer, ColorPickerWidget,
     FrameSlider, show_message_dialog
 )
@@ -1129,12 +1129,7 @@ class MainWindow(QMainWindow):
         # Connect callbacks for both managers
         self.point_manager.add_callback(self._on_points_changed)
         self.sam_manager.add_callback(self._on_segmentation_changed)
-        
-        # Initialize update checker
-        self.update_checker = UpdateChecker()
-        self.update_checker.update_available.connect(self.on_update_available)
-        self.update_menu_action = None  # Will store the update menu action when created
-        
+
         # Load session settings
         self.settings_mgr.load_session_settings()
 
@@ -1144,7 +1139,6 @@ class MainWindow(QMainWindow):
         self._setup_hotkeys()
         self._update_point_editing_state()
         print(f"Sammie-Roto version {__version__}")
-        self.update_checker.check_for_updates()
 
         # Show the window immediately so it appears before model loading
         self.show()
@@ -2908,56 +2902,6 @@ class MainWindow(QMainWindow):
             if cpu != self.settings_mgr.get_app_setting("force_cpu", 0):
                 show_message_dialog(self, title="Restart Required", message="You must restart the application for device changes to take effect.", type="info")
 
-    # ==================== UPDATE CHECKER ====================
-    
-    def on_update_available(self, current_version, latest_version):
-        """Handle update available signal from background thread"""
-        # Print to console
-        print(f"🔔 A new version of Sammie-roto is available! ({latest_version}) It can be downloaded from the File menu.")
-        
-        # Add menu item to file menu if it doesn't already exist
-        if self.update_menu_action is None:
-            # Add separator before update item
-            self.file_menu.addSeparator()
-            
-            # Create update menu action
-            self.update_menu_action = QAction(f"Update Available ({latest_version})", self)
-            self.update_menu_action.triggered.connect(
-                lambda: self.open_update_url(latest_version)
-            )
-            
-            # Find the Exit action and insert before it
-            actions = self.file_menu.actions()
-            exit_action = None
-            
-            # Look for the Exit action
-            for action in actions:
-                if action.text() == "Exit":
-                    exit_action = action
-                    break
-            
-            if exit_action:
-                # Insert separator before Exit if there isn't one already
-                separator_before_exit = False
-                exit_index = actions.index(exit_action)
-                if exit_index > 0 and actions[exit_index - 1].isSeparator():
-                    separator_before_exit = True
-                
-                if not separator_before_exit:
-                    self.file_menu.insertSeparator(exit_action)
-                
-                # Insert update action before Exit
-                self.file_menu.insertAction(exit_action, self.update_menu_action)
-            else:
-                # Fallback: add at the end if Exit not found
-                self.file_menu.addSeparator()
-                self.file_menu.addAction(self.update_menu_action)
-    
-    def open_update_url(self, version):
-        """Open the GitHub releases page"""
-        url = "https://github.com/Zarxrax/Sammie-Roto-2/releases"
-        webbrowser.open(url)
-    
     def show_help(self):
         """Open the GitHub wiki page"""
         url = "https://github.com/Zarxrax/Sammie-Roto-2/wiki"
