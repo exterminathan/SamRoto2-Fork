@@ -68,7 +68,7 @@ class ApplicationSettings:
     dedupe_threshold: float = 0.8
     
     # Export dialog defaults
-    export_codec: str = "prores"
+    export_codec: str = "ffv1"
     export_output_type: str = "Matte" 
     export_use_input_folder: bool = True
     export_filename_template: str = "{input_name}-{output_type}"
@@ -140,6 +140,7 @@ class SessionSettings:
     is_deduplicated: bool = False
     is_matted: bool = False
     is_removed: bool = False
+    is_depth: bool = False
     
     # Session metadata
     created_timestamp: str = ""

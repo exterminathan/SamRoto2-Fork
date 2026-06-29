@@ -777,7 +777,7 @@ class ExportDialog(QDialog):
         settings_mgr = self.parent_window.settings_mgr
         
         # Load format
-        format_id = settings_mgr.get_app_setting('export_format_id', 'prores')
+        format_id = settings_mgr.get_app_setting('export_format_id', 'ffv1')
         for i in range(self.format_combo.count()):
             if self.format_combo.itemData(i) == format_id:
                 self.format_combo.setCurrentIndex(i)

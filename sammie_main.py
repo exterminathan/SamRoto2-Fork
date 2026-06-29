@@ -22,6 +22,7 @@ from sammie.resources import resources
 from sammie import core
 from sammie import matting
 from sammie import removal
+from sammie import depth
 from sammie.export_image_dialog import ImageExportDialog
 from sammie.export_dialog import ExportDialog
 from sammie.settings_dialog import SettingsDialog
@@ -690,6 +691,79 @@ class MattingTab(QWidget):
         else:
             self.run_matting_btn.setIcon(QIcon())
 
+class DepthTab(QWidget):
+    """Tab containing depth estimation controls"""
+
+    def __init__(self):
+        super().__init__()
+        self._init_ui()
+
+    def _init_ui(self):
+        """Initialize the depth tab layout"""
+        layout = QVBoxLayout(self)
+        settings_mgr = get_settings_manager()
+
+        # Instructions
+        instructions_group = QGroupBox("Instructions")
+        instructions_layout = QVBoxLayout(instructions_group)
+        instructions_text = QLabel()
+        instructions_text.setWordWrap(True)
+        instructions_text.setTextFormat(Qt.RichText)
+        instructions_text.setText("""
+        • Depth estimates a grayscale depth map for the whole frame (near = white, far = black).<br>
+        • The <b>Depth-Matte</b> output confines depth to your tracked subject, so add points and run tracking in the Segmentation tab first.<br>
+        • Press 'Run Depth' to precompute depth for all frames, then select <b>Depth-Matte</b> in the View dropdown or export it.<br>
+        • Larger models are higher quality but slower and use more VRAM.<br>
+        """)
+        instructions_layout.addWidget(instructions_text)
+        layout.addWidget(instructions_group)
+
+        # Run/Clear buttons
+        depth_group = QGroupBox("Depth")
+        depth_layout = QVBoxLayout(depth_group)
+        self.run_depth_btn = QPushButton(" Run Depth ")
+        self.run_depth_btn.setLayoutDirection(Qt.RightToLeft)
+        depth_layout.addWidget(self.run_depth_btn)
+        self.clear_depth_btn = QPushButton("Clear Depth")
+        self.clear_depth_btn.setToolTip("Remove all depth data")
+        depth_layout.addWidget(self.clear_depth_btn)
+        layout.addWidget(depth_group)
+
+        # Processing settings
+        processing_group = QGroupBox("Processing Settings")
+        processing_layout = QVBoxLayout(processing_group)
+        model_layout = QHBoxLayout()
+        model_label = QLabel("Model:")
+        self.depth_model_combo = QComboBox()
+        self.depth_model_combo.addItems(["Small", "Large"])
+        self.depth_model_combo.setToolTip("Large is higher quality but slower and uses more VRAM.")
+        self.depth_model_combo.currentTextChanged.connect(
+            lambda v: settings_mgr.set_session_setting("depth_model", v)
+        )
+        model_layout.addWidget(model_label)
+        model_layout.addWidget(self.depth_model_combo)
+        model_layout.addStretch()
+        processing_layout.addLayout(model_layout)
+        layout.addWidget(processing_group)
+
+        layout.addStretch()
+
+    def load_values_from_settings(self):
+        """Load depth tab values from settings"""
+        settings_mgr = get_settings_manager()
+        model = settings_mgr.get_session_setting("depth_model", "Large")
+        idx = self.depth_model_combo.findText(model)
+        if idx >= 0:
+            self.depth_model_combo.setCurrentIndex(idx)
+
+    def update_depth_status(self, is_propagated):
+        """Update the Run Depth button icon based on propagation state"""
+        if is_propagated:
+            self.run_depth_btn.setIcon(QIcon(":/icons/check-small.png"))
+        else:
+            self.run_depth_btn.setIcon(QIcon())
+
+
 class ObjectRemovalTab(QWidget):
     """Tab containing object removal controls and parameters"""
     
@@ -1089,10 +1163,12 @@ class Sidebar(QWidget):
         self.tab_widget = QTabWidget()
         self.segmentation_tab = SegmentationTab()
         self.matting_tab = MattingTab()
+        self.depth_tab = DepthTab()
         self.removal_tab = ObjectRemovalTab()
-        
+
         self.tab_widget.addTab(self.segmentation_tab, "Segmentation")
         self.tab_widget.addTab(self.matting_tab, "Matting")
+        self.tab_widget.addTab(self.depth_tab, "Depth")
         self.tab_widget.addTab(self.removal_tab, "Object Removal")
         
         layout.addWidget(self.tab_widget)
@@ -1101,6 +1177,7 @@ class Sidebar(QWidget):
         """Load values for all tabs from settings"""
         self.segmentation_tab.load_values_from_settings()
         self.matting_tab.load_values_from_settings()
+        self.depth_tab.load_values_from_settings()
         self.removal_tab.load_values_from_settings()
 
 
@@ -1120,6 +1197,7 @@ class MainWindow(QMainWindow):
         self.sam_manager = sammie.SamManager()
         self.matany_manager = matting.create_matting_manager()
         self.removal_manager = removal.RemovalManager()
+        self.depth_manager = depth.DepthManager()
         self.point_manager = core.PointManager()
         self.highlighted_point = None
         
@@ -1209,6 +1287,7 @@ class MainWindow(QMainWindow):
         settings_mgr.set_session_setting("is_deduplicated", self.sam_manager.deduplicated)
         settings_mgr.set_session_setting("is_matted", self.matany_manager.propagated)
         settings_mgr.set_session_setting("is_removed", self.removal_manager.propagated)
+        settings_mgr.set_session_setting("is_depth", self.depth_manager.propagated)
 
     # ==================== SIGNAL CONNECTIONS ====================
         
@@ -1268,6 +1347,19 @@ class MainWindow(QMainWindow):
             self.matting_tab = matting_tab
             # Initialize the button status
             self.matting_tab.update_matting_status(self.matany_manager.propagated)
+
+        # Get the depth tab
+        depth_tab = self.sidebar.depth_tab
+        if depth_tab:
+            depth_tab.parent_window = self
+            # Connect depth tab buttons
+            depth_tab.run_depth_btn.clicked.connect(self.run_depth)
+            depth_tab.clear_depth_btn.clicked.connect(self.clear_depth)
+
+            # Store reference to depth tab for status updates
+            self.depth_tab = depth_tab
+            # Initialize the button status
+            self.depth_tab.update_depth_status(self.depth_manager.propagated)
 
         # Get the object removal tab
         removal_tab = self.sidebar.removal_tab
@@ -1620,7 +1712,7 @@ class MainWindow(QMainWindow):
         view_controls_layout.addWidget(QLabel("View:"))
         self.view_combo = QComboBox()
         self.view_combo.addItems([
-            "Segmentation-Edit", "Segmentation-Matte", "Segmentation-BGcolor", "Matting-Matte", "Matting-BGcolor", "ObjectRemoval"
+            "Segmentation-Edit", "Segmentation-Matte", "Segmentation-BGcolor", "Matting-Matte", "Matting-BGcolor", "ObjectRemoval", "Depth-Matte"
         ])
 
         # Always reset the view to "Segmentation-Edit"
@@ -2306,6 +2398,48 @@ class MainWindow(QMainWindow):
         if hasattr(self, 'matting_tab'):
             self.matting_tab.update_matting_status(self.matany_manager.propagated)
 
+    def run_depth(self):
+        """Run depth estimation precompute pass over all frames"""
+        self.settings_mgr.save_session_settings()
+        if core.VideoInfo.total_frames == 0:
+            print("Load a video before running depth")
+            return
+
+        print("Loading Depth Anything V2 model...")
+        QApplication.processEvents()
+        self.sam_manager.offload_model_to_cpu()
+        if not self.depth_manager.load_depth_model(parent_window=self):
+            print("Failed to load depth model")
+            self.sam_manager.load_model_to_device()
+            return
+        QApplication.processEvents()
+        try:
+            self.depth_manager.run_depth(parent_window=self)
+        except Exception as e:
+            if "out of memory" in str(e):
+                show_message_dialog(self, title="Error", message="An out of memory error occurred. Please try again with a smaller model.", type="warning")
+            else:
+                print(f"An error occurred: {e}")
+        finally:
+            self.update_depth_status()
+            self._update_current_frame_display()
+            QApplication.processEvents()
+            self.settings_mgr.save_session_settings()
+            self.depth_manager.unload_depth_model()
+            self.sam_manager.load_model_to_device()
+
+    def clear_depth(self):
+        """Clear depth data"""
+        self.depth_manager.clear_depth()
+        self.depth_manager.propagated = False
+        self.update_depth_status()
+        self._update_current_frame_display()
+
+    def update_depth_status(self):
+        """Update the depth status display"""
+        if hasattr(self, 'depth_tab'):
+            self.depth_tab.update_depth_status(self.depth_manager.propagated)
+
     def update_removal_status(self):
         """Update the removal status display"""
         if hasattr(self, 'removal_tab'):
@@ -2570,6 +2704,7 @@ class MainWindow(QMainWindow):
         # Processing operations
         self._create_shortcut("Ctrl+T", self.track_objects, "Track Objects")
         self._create_shortcut("Ctrl+M", self.run_matting, "Run Matting")
+        self._create_shortcut("Ctrl+Shift+D", self.run_depth, "Run Depth")
         self._create_shortcut("Ctrl+D", self.deduplicate_similar_masks, "Deduplicate Masks")
         self._create_shortcut("Ctrl+R", self.clear_tracking_data, "Clear Tracking Data")
 
@@ -2584,6 +2719,7 @@ class MainWindow(QMainWindow):
         self._create_shortcut("F5", lambda: self.set_view_mode("Matting-Matte"), "Matting Matte View")
         self._create_shortcut("F6", lambda: self.set_view_mode("Matting-BGcolor"), "Matting BGcolor View")
         self._create_shortcut("F7", lambda: self.set_view_mode("ObjectRemoval"), "Object Removal Edit View")
+        self._create_shortcut("F8", lambda: self.set_view_mode("Depth-Matte"), "Depth Matte View")
         
         # Help
         self._create_shortcut("F1", self.show_help, "Show Help", create_shortcut=False)
@@ -2862,9 +2998,11 @@ class MainWindow(QMainWindow):
         self.sam_manager.deduplicated = settings_mgr.get_session_setting("is_deduplicated", False)
         self.matany_manager.propagated = settings_mgr.get_session_setting("is_matted", False)
         self.removal_manager.propagated = settings_mgr.get_session_setting("is_removed", False)
+        self.depth_manager.propagated = settings_mgr.get_session_setting("is_depth", False)
         self.update_tracking_status() # also updates deduplication status
         self.update_matting_status()
         self.update_removal_status()
+        self.update_depth_status()
         # Update display
         self._update_current_frame_display()
 

@@ -16,6 +16,7 @@ mask_dir = os.path.join(temp_dir, "masks")
 backup_dir = os.path.join(temp_dir, "masks_backup")
 matting_dir = os.path.join(temp_dir, "matting")
 removal_dir = os.path.join(temp_dir, "removal")
+depth_dir = os.path.join(temp_dir, "depth")  # whole-frame depth maps (one PNG per frame, not per-object)
 
 PALETTE = [
     (128, 0, 0), (0, 128, 0), (128, 128, 0), (0, 0, 128), (128, 0, 128), (0, 128, 128),

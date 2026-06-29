@@ -356,6 +356,8 @@ def update_image(slider_value, view_options, points, return_numpy=False, object_
         return _handle_matting_alpha_view(slider_value, view_options, points, return_numpy, object_id_filter)
     elif view_mode == "ObjectRemoval":
         return _handle_object_removal_view(slider_value, view_options, points, return_numpy, object_id_filter)
+    elif view_mode == "Depth-Matte":
+        return _handle_depth_matte_view(slider_value, view_options, points, return_numpy, object_id_filter)
     elif view_mode == "None":
         return _handle_none_view(slider_value, return_numpy)
     else:
@@ -531,6 +533,46 @@ def _handle_matting_matte_view(frame_number, view_options, points, return_numpy=
         return mask_3channel
     else:
         return _convert_to_qpixmap(mask_3channel)
+
+
+def _handle_depth_matte_view(frame_number, view_options, points, return_numpy=False, object_id_filter=None):
+    """Handle Depth-Matte view.
+
+    Composes the precomputed whole-frame depth map with the segmentation mask so
+    only the tracked subject carries depth values (black background). Requires
+    both a depth pass (Depth tab) and tracking (segmentation masks) to be present.
+    """
+    depth_path = os.path.join(core.depth_dir, f"{frame_number:05d}.png")
+    if not os.path.exists(depth_path):
+        return None
+    depth = cv2.imread(depth_path, cv2.IMREAD_GRAYSCALE)
+    if depth is None:
+        return None
+
+    mask = core.load_masks_for_frame(frame_number, points, return_combined=True, object_id_filter=object_id_filter)
+    if mask is None:
+        return None
+
+    mask = core.apply_mask_postprocessing(mask)
+
+    if view_options.get("antialias", True):
+        global smoothing_model
+        if smoothing_model is None:
+            load_smoothing_model()
+        if smoothing_model is not None:
+            device = core.DeviceManager.get_device()
+            mask_3channel = np.stack([mask] * 3, axis=-1)
+            mask_3channel = run_smoothing_model(mask_3channel, smoothing_model, device)
+            mask = mask_3channel[:, :, 0]
+
+    alpha = mask.astype(np.float32) / 255.0
+    matte = (depth.astype(np.float32) * alpha).clip(0, 255).astype(np.uint8)
+    matte_3channel = np.stack([matte] * 3, axis=-1)
+
+    if return_numpy:
+        return matte_3channel
+    else:
+        return _convert_to_qpixmap(matte_3channel)
 
 
 def _handle_matting_bgcolor_view(frame_number, view_options, points, return_numpy=False, object_id_filter=None):

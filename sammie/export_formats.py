@@ -112,54 +112,6 @@ class ExportFormat(ABC):
 
 # === Video Formats ===
 
-class ProResFormat(ExportFormat):
-    @property
-    def format_id(self) -> str:
-        return "prores"
-    
-    @property
-    def display_name(self) -> str:
-        return "ProRes Video"
-    
-    @property
-    def file_extension(self) -> str:
-        return ".mov"
-    
-    @property
-    def supports_alpha(self) -> bool:
-        return True
-    
-    @property
-    def supports_quality_setting(self) -> bool:
-        return False
-    
-    @property
-    def supports_multiple_export(self) -> bool:
-        return True
-    
-    @property
-    def supports_include_original(self) -> bool:
-        return False
-    
-    @property
-    def is_sequence(self) -> bool:
-        return False
-    
-    def get_available_output_types(self) -> List[str]:
-        return [
-            'Segmentation-Matte', 'Segmentation-Alpha', 'Segmentation-BGcolor',
-            'Matting-Matte', 'Matting-Alpha', 'Matting-BGcolor', 'ObjectRemoval'
-        ]
-    
-    def get_codec_name(self) -> str:
-        return "prores_ks"
-    
-    def get_pixel_format(self, has_alpha: bool) -> str:
-        return 'yuva444p10le' if has_alpha else 'yuv422p10le'
-    
-    def get_codec_options(self, quality: int) -> Dict[str, str]:
-        return {'profile': '4' if self.supports_alpha else '3'}
-
 
 class FFV1Format(ExportFormat):
     @property
@@ -197,7 +149,8 @@ class FFV1Format(ExportFormat):
     def get_available_output_types(self) -> List[str]:
         return [
             'Segmentation-Matte', 'Segmentation-Alpha', 'Segmentation-BGcolor',
-            'Matting-Matte', 'Matting-Alpha', 'Matting-BGcolor', 'ObjectRemoval'
+            'Matting-Matte', 'Matting-Alpha', 'Matting-BGcolor', 'ObjectRemoval',
+            'Depth-Matte'
         ]
     
     def get_codec_name(self) -> str:
@@ -246,7 +199,8 @@ class H264Format(ExportFormat):
     def get_available_output_types(self) -> List[str]:
         return [
             'Segmentation-Matte', 'Segmentation-BGcolor',
-            'Matting-Matte', 'Matting-BGcolor', 'ObjectRemoval'
+            'Matting-Matte', 'Matting-BGcolor', 'ObjectRemoval',
+            'Depth-Matte'
         ]
     
     def get_codec_name(self) -> str:
@@ -295,7 +249,8 @@ class H265Format(ExportFormat):
     def get_available_output_types(self) -> List[str]:
         return [
             'Segmentation-Matte', 'Segmentation-BGcolor',
-            'Matting-Matte', 'Matting-BGcolor', 'ObjectRemoval'
+            'Matting-Matte', 'Matting-BGcolor', 'ObjectRemoval',
+            'Depth-Matte'
         ]
     
     def get_codec_name(self) -> str:
@@ -344,7 +299,8 @@ class VP9Format(ExportFormat):
     def get_available_output_types(self) -> List[str]:
         return [
             'Segmentation-Matte', 'Segmentation-Alpha', 'Segmentation-BGcolor',
-            'Matting-Matte', 'Matting-Alpha', 'Matting-BGcolor', 'ObjectRemoval'
+            'Matting-Matte', 'Matting-Alpha', 'Matting-BGcolor', 'ObjectRemoval',
+            'Depth-Matte'
         ]
     
     def get_codec_name(self) -> str:
@@ -403,7 +359,7 @@ class EXRSequenceFormat(ExportFormat):
         return True
     
     def get_available_output_types(self) -> List[str]:
-        return ['Segmentation-Matte', 'Matting-Matte']
+        return ['Segmentation-Matte', 'Matting-Matte', 'Depth-Matte']
     
     def get_codec_name(self) -> Optional[str]:
         return None
@@ -451,7 +407,8 @@ class PNGSequenceFormat(ExportFormat):
     def get_available_output_types(self) -> List[str]:
         return [
             'Segmentation-Matte', 'Segmentation-Alpha', 'Segmentation-BGcolor',
-            'Matting-Matte', 'Matting-Alpha', 'Matting-BGcolor', 'ObjectRemoval'
+            'Matting-Matte', 'Matting-Alpha', 'Matting-BGcolor', 'ObjectRemoval',
+            'Depth-Matte'
         ]
     
     def get_codec_name(self) -> Optional[str]:
@@ -470,7 +427,6 @@ class FormatRegistry:
     """Central registry for all export formats"""
     
     _formats = {
-        'prores': ProResFormat(),
         'ffv1': FFV1Format(),
         'x264': H264Format(),
         'x265': H265Format(),
@@ -488,7 +444,6 @@ class FormatRegistry:
     def get_all_formats(cls) -> List[ExportFormat]:
         """Get all available formats in display order"""
         return [
-            cls._formats['prores'],
             cls._formats['ffv1'],
             cls._formats['x264'],
             cls._formats['x265'],

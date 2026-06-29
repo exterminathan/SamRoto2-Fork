@@ -60,9 +60,11 @@ class BaseExportWorker(QThread):
         elif output_type.startswith('Matting-'):
             if output_type == 'Matting-BGcolor':
                 view_options['bgcolor'] = bgcolor
+        elif output_type.startswith('Depth-'):
+            view_options['antialias'] = antialias
         elif output_type == 'ObjectRemoval':
             view_options['show_removal_mask'] = False
-        
+
         return view_options
     
     @staticmethod
@@ -171,10 +173,7 @@ class VideoExportWorker(BaseExportWorker):
 
         # Set codec options
         codec_options = self.format.get_codec_options(self.settings.quality)
-        if has_alpha and self.format.supports_alpha:
-            if self.format.format_id == 'prores':
-                codec_options['profile'] = '4'
-        
+
         for key, value in codec_options.items():
             stream.options[key] = value
         try:

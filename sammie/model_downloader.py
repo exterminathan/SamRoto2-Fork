@@ -512,6 +512,17 @@ MODEL_REGISTRY: "dict[str, DownloadSpec]" = {
         md5="46a0af9a794fb405221988a7e2b1396b",
         dest_dir="checkpoints/videomama/vae",
     ),
+    # Depth Anything V2 (monocular depth) — used by the Depth tab / Depth-Matte output
+    "depth_small": DownloadSpec(
+        url="https://huggingface.co/depth-anything/Depth-Anything-V2-Small/resolve/main/depth_anything_v2_vits.pth",
+        md5="c0c52839dba75245aabbdff04f51395e",
+        dest_dir="checkpoints",
+    ),
+    "depth_large": DownloadSpec(
+        url="https://huggingface.co/depth-anything/Depth-Anything-V2-Large/resolve/main/depth_anything_v2_vitl.pth",
+        md5="dc74e37c9c50323d2e79c6b171929b21",
+        dest_dir="checkpoints",
+    ),
 }
 
 

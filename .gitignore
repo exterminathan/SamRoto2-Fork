@@ -14,6 +14,8 @@ checkpoints/minimax/transformer/diffusion_pytorch_model.safetensors
 checkpoints/minimax/vae/diffusion_pytorch_model.safetensors
 checkpoints/videomama/unet/diffusion_pytorch_model.safetensors
 checkpoints/videomama/vae/diffusion_pytorch_model.fp16.safetensors
+checkpoints/depth_anything_v2_vits.pth
+checkpoints/depth_anything_v2_vitl.pth
 
 #local video files
 /files/
